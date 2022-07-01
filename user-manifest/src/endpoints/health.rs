@@ -1,4 +1,5 @@
 use std::sync::{Arc, RwLock};
+use log::error;
 use actix_web::{web, HttpResponse, Responder};
 use crate::RBACController;
 
@@ -7,12 +8,11 @@ pub async fn health(controller: web::Data<Arc<RwLock<RBACController>>>) -> impl 
     let rbac_controller = controller.into_inner();
     let read_result = rbac_controller.read();
     match read_result{
-        Ok(result) => {
-            println!("{:?}, {:?}", result.grant_to_permissions, result.user_to_grant);
+        Ok(_res) => {
             HttpResponse::Ok().body("ok")
         },
         Err(err) => {
-            eprintln!("Unable to read from controller with error {:?}", err);
+            error!("Unable to read from controller with error {:?}", err);
             HttpResponse::InternalServerError().body("internal server error")
         }
     }

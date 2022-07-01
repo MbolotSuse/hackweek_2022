@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 use actix_web::{web, HttpResponse, Responder};
+use log::error;
 use crate::RBACController;
 use crate::endpoints::structs::{GrantInput, Filter, grant_filter_applies};
 use crate::controller::rbac_grant::RBACGrant;
@@ -21,7 +22,7 @@ pub async fn get_permissions(input: web::Json<GrantInput>, controller: web::Data
                     match convert_option{
                         Ok(convert_option) => HttpResponse::Ok().body(convert_option),
                         Err(err) => {
-                            eprintln!("Unable to convert to a json with error {}", err);
+                            error!("Unable to convert to a json with error {}", err);
                             HttpResponse::InternalServerError().body("internal server error")
                         },
                     }
@@ -32,7 +33,7 @@ pub async fn get_permissions(input: web::Json<GrantInput>, controller: web::Data
             }
         },
         Err(err) => {
-            eprintln!("Unable to read from controller with error {:?}", err);
+            error!("Unable to read from controller with error {:?}", err);
             HttpResponse::InternalServerError().body("internal server error")
         }
     }

@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use kube::{api::{Api, ListParams}, runtime::{watcher, WatchStreamExt}, Client};
 use crate::controller::rbac_grant::{RBACGrant, RBACId, GrantSubject, convert_role_binding_to_grant, convert_cluster_role_binding_to_grant, convert_to_grant_subject, get_rules};
 use k8s_openapi::api::rbac::v1::{PolicyRule, Role, ClusterRole, RoleBinding, ClusterRoleBinding, Subject};
+use log::{info, error};
 use std::error::Error;
 use std::sync::{Arc, RwLock};
 use actix_web::rt;
@@ -22,7 +23,7 @@ pub fn new() -> RBACController{
 }
 
 pub async fn run_controllers(client: Client, controller: Arc<RwLock<RBACController>>){
-    println!("Starting controllers");
+    info!("Starting controllers");
     rt::spawn(run_role_binding_controller(client.clone(), Arc::clone(&controller)));
     rt::spawn(run_cluster_role_binding_controller(client.clone(), Arc::clone(&controller)));
 }
@@ -30,7 +31,7 @@ pub async fn run_controllers(client: Client, controller: Arc<RwLock<RBACControll
 async fn run_role_binding_controller(client: Client, controller: Arc<RwLock<RBACController>>){
     let role_binding_api = Api::<RoleBinding>::all(client.clone());
     let role_watcher = watcher(role_binding_api, ListParams::default()).applied_objects();
-    println!("Starting role_binding controller");
+    info!("Starting role_binding controller");
     pin_mut!(role_watcher);
     while let Ok(Some(event)) = role_watcher.try_next().await {
         let subjects: Vec<Subject> = match event.clone().subjects{
@@ -42,7 +43,7 @@ async fn run_role_binding_controller(client: Client, controller: Arc<RwLock<RBAC
         let grant = match grant_result{
             Ok(result) => result,
             Err(result) => {
-                eprintln!("Unable to convert role_binding {:?} to RBACGrant with error {:?}, will skip", event, result);
+                error!("Unable to convert role_binding {:?} to RBACGrant with error {:?}, will skip", event, result);
                 continue;
             },
         };
@@ -51,11 +52,11 @@ async fn run_role_binding_controller(client: Client, controller: Arc<RwLock<RBAC
             Ok(result) => {
                 if !result{
                     // this should never happen, but handle it just in case
-                    eprintln!("Did not store grant for event {:?}", event);
+                    error!("Did not store grant for event {:?}", event);
                 }
             },
             Err(err) => {
-                eprintln!("Failed to store grant for event {:?}, with error {:?}", event, err)
+                error!("Failed to store grant for event {:?}, with error {:?}", event, err)
             }
         }
     }
@@ -64,7 +65,7 @@ async fn run_role_binding_controller(client: Client, controller: Arc<RwLock<RBAC
 async fn run_cluster_role_binding_controller(client: Client, controller: Arc<RwLock<RBACController>>){
     let cluster_role_binding_api = Api::<ClusterRoleBinding>::all(client.clone());
     let cluster_role_watcher = watcher(cluster_role_binding_api, ListParams::default()).applied_objects();
-    println!("Starting cluster_role_binding controller");
+    info!("Starting cluster_role_binding controller");
     pin_mut!(cluster_role_watcher);
     while let Ok(Some(event)) = cluster_role_watcher.try_next().await {
         let subjects: Vec<Subject> = match event.clone().subjects{
@@ -76,7 +77,7 @@ async fn run_cluster_role_binding_controller(client: Client, controller: Arc<RwL
         let grant = match grant_result{
             Ok(result) => result,
             Err(result) => {
-                eprintln!("Unable to convert cluster_role_binding {:?} to RBACGrant with error {:?}, will skip", event, result);
+                error!("Unable to convert cluster_role_binding {:?} to RBACGrant with error {:?}, will skip", event, result);
                 continue;
             },
         };
@@ -85,11 +86,11 @@ async fn run_cluster_role_binding_controller(client: Client, controller: Arc<RwL
             Ok(result) => {
                 if !result{
                     // this should never happen, but handle it just in case
-                    eprintln!("Did not store grant for event {:?}", event);
+                    error!("Did not store grant for event {:?}", event);
                 }
             },
             Err(err) => {
-                eprintln!("Failed to store grant for event {:?}, with error {:?}", event, err)
+                error!("Failed to store grant for event {:?}, with error {:?}", event, err)
             }
         }
     }
